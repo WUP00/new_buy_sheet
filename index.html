@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>✈ 購物清單</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #F5F3EE;
+    --surface: #FFFFFF;
+    --border: #E2DDD5;
+    --text: #1A1814;
+    --muted: #8A867E;
+    --checked-bg: #F0EDE8;
+    --checked-text: #B0AA9F;
+
+    --otaku:  #6C5CE7;
+    --wear:   #D05A2B;
+    --beauty: #2BAD82;
+    --food:   #D49A1A;
+    --daiso:  #C0398A;
+
+    --otaku-light:  #EEF0FF;
+    --wear-light:   #FFF0EB;
+    --beauty-light: #E8FAF4;
+    --food-light:   #FFF8E5;
+    --daiso-light:  #FFF0F8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 16px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .progress-text {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .progress-bar-bg {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .tab.active {
+    border-color: transparent;
+    color: #fff;
+    background: var(--text);
+  }
+
+  /* CONTENT */
+  .content { padding: 12px 12px 0; }
+
+  /* SECTION */
+  .section { margin-bottom: 10px; }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 14px 4px 6px;
+  }
+
+  /* ITEM */
+  .item {
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: background .1s;
+    user-select: none;
+  }
+  .item:active { background: #F7F5F2; }
+
+  .checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+  }
+  .item.checked .checkbox {
+    border-color: transparent;
+    background: var(--text);
+  }
+  .checkmark {
+    width: 10px;
+    height: 7px;
+    opacity: 0;
+    transition: opacity .1s;
+  }
+  .item.checked .checkmark { opacity: 1; }
+
+  .item-body { flex: 1; min-width: 0; }
+  .item-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+  }
+  .cat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .store-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .item-name {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+    transition: color .15s;
+  }
+  .item.checked .item-name {
+    color: var(--checked-text);
+    text-decoration: line-through;
+    text-decoration-color: var(--border);
+  }
+
+  .item-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .item.checked .item-note { color: var(--checked-text); }
+
+  .item-link {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: #2B6CB0;
+    word-break: break-all;
+    text-decoration: none;
+  }
+  .item-link:active { opacity: 0.7; }
+
+  /* ADDED: Item Image */
+  .item-img {
+    display: block;
+    margin-top: 8px;
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
+  .item.checked .item-img { opacity: 0.5; filter: grayscale(1); }
+
+  /* WARNING NOTE */
+  .warning-card {
+    background: #FFF8E6;
+    border: 1px solid #F0D080;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #7A5E10;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* EMPTY */
+  .empty {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* 顏色主題 */
+  .otaku  { --c: var(--otaku);  --cl: var(--otaku-light);  }
+  .wear   { --c: var(--wear);   --cl: var(--wear-light);   }
+  .beauty { --c: var(--beauty); --cl: var(--beauty-light); }
+  .food   { --c: var(--food);   --cl: var(--food-light);   }
+  .daiso  { --c: var(--daiso);  --cl: var(--daiso-light);  }
+
+  .cat-dot   { background: var(--c); }
+  .store-badge { background: var(--cl); color: var(--c); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>✈ 札幌購物清單</h1>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar" id="prog-bar"></div>
+      </div>
+      <span class="progress-text" id="prog-text">0 / 0</span>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-cat="全部">全部</button>
+  </div>
+</div>
+
+<div class="content" id="content"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+const items = [];
+
+// Primary URL (public "Publish to the web" CSV)
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs78aEB1z_QP6UXRbbsFSeTK66wU_o2OuKkaub-W3qYsxMJURylcxjxG5Mq-929UdqpWajyt3YUFhe/pub?output=csv";
+
+// CORS workaround: some Google CSV endpoints do not send CORS headers.
+// This read-only proxy turns the response into plain text with permissive CORS.
+// If you don’t want any 3rd-party proxy, host a tiny proxy yourself (Cloudflare Worker, etc.).
+const CORS_PROXY_PREFIX = "https://r.jina.ai/http://";
+const CORS_PROXY_PREFIX_HTTPS = "https://r.jina.ai/https://";
+
+const contentEl = document.getElementById("content");
+const tabsEl = document.getElementById("tabs");
+const progBarEl = document.getElementById("prog-bar");
+const progTextEl = document.getElementById("prog-text");
+
+const STORAGE_KEY = "sapporo_buylist_checked_v1";
+let activeCat = "全部";
+let checked = loadChecked();
+let sheetRows = [];
+
+function loadChecked() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === "object" ? obj : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveChecked() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
+  } catch {
+    // ignore
+  }
+}
+
+function isChecked(id) {
+  return !!checked[String(id)];
+}
+
+function toggleChecked(id) {
+  const k = String(id);
+  checked[k] = !checked[k];
+  if (!checked[k]) delete checked[k];
+  saveChecked();
+  render();
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function parseDriveImageUrl(url) {
+  const u = String(url ?? "").trim();
+  if (!u) return "";
+  if (!u.startsWith("http://") && !u.startsWith("https://")) return u;
+
+  const openId = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (openId?.[1]) return `https://drive.google.com/uc?export=view&id=${openId[1]}`;
+
+  const fileD = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)\//);
+  if (fileD?.[1]) return `https://drive.google.com/uc?export=view&id=${fileD[1]}`;
+
+  return u;
+}
+
+function getDriveFileId(url) {
+  const u = String(url ?? "").trim();
+  if (!u) return "";
+  const openId = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (openId?.[1]) return openId[1];
+  const fileD = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)\//);
+  if (fileD?.[1]) return fileD[1];
+  return "";
+}
+
+function buildDriveFallbackUrls(url) {
+  const id = getDriveFileId(url);
+  if (!id) return [];
+  const ts = Date.now();
+  return [
+    `https://drive.google.com/uc?export=view&id=${id}&t=${ts}`,
+    `https://drive.google.com/thumbnail?id=${id}&sz=w1200`,
+    `https://lh3.googleusercontent.com/d/${id}=w1200`,
+  ];
+}
+
+function tryNextImage(imgEl) {
+  const rest = String(imgEl.getAttribute("data-fallbacks") || "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (rest.length === 0) {
+    imgEl.onerror = null;
+    return;
+  }
+  const [next, ...tail] = rest;
+  imgEl.setAttribute("data-fallbacks", tail.join("|"));
+  imgEl.src = next;
+}
+
+function sanitizeCsvText(raw) {
+  const txt = String(raw ?? "").replace(/^\uFEFF/, "").trim();
+  if (!txt) return "";
+
+  const lines = txt.split(/\r?\n/);
+  const headerCandidates = ["時間戳記", "品項名稱", "數量", "照片", "限定價格"];
+
+  // If proxy adds metadata lines, locate the real CSV header row first.
+  const headerIndex = lines.findIndex((line) =>
+    headerCandidates.every((h) => line.includes(h))
+  );
+
+  if (headerIndex >= 0) return lines.slice(headerIndex).join("\n").trim();
+  return txt;
+}
+
+function normalizeRowKeys(row) {
+  const out = {};
+  for (const [k, v] of Object.entries(row || {})) {
+    const key = String(k ?? "").replace(/^\uFEFF/, "").trim();
+    out[key] = typeof v === "string" ? v.trim() : v;
+  }
+  return out;
+}
+
+function hasUsefulSheetData(row) {
+  const vals = [
+    row["時間戳記"],
+    row["品項名稱"],
+    row["數量"],
+    row["照片"],
+    row["限定價格"],
+    row["timestamp"],
+    row["item"],
+    row["qty"],
+    row["photo"],
+    row["price"],
+  ];
+  return vals.some((v) => String(v ?? "").trim() !== "");
+}
+
+function sheetRowToItem(row, idx) {
+  const category = (row["類別"] ?? row["category"] ?? row["Category"] ?? "其他").toString().trim() || "其他";
+  const name = row["品項名稱"] ?? row["item"] ?? row["Item"] ?? "";
+  const qty = row["數量"] ?? row["qty"] ?? row["Qty"] ?? "";
+  const photo = row["照片"] ?? row["photo"] ?? row["Photo"] ?? "";
+  const price = row["限定價格"] ?? row["price"] ?? row["Price"] ?? "";
+
+  const title = [name, qty ? `×${qty}` : ""].filter(Boolean).join(" ");
+  const note = [price !== "" ? `限定價格：${price}` : ""]
+    .filter(Boolean)
+    .join(" · ");
+
+  const normalizedPhoto = String(photo ?? "").trim();
+  const primaryImg = parseDriveImageUrl(normalizedPhoto);
+  const imgFallbacks = buildDriveFallbackUrls(normalizedPhoto).filter((u) => u !== primaryImg);
+
+  return {
+    id: `sheet_${idx}`,
+    cat: category,
+    store: category,
+    name: title || "(未填品項名稱)",
+    note,
+    img: primaryImg,
+    imgFallbacks,
+    link: normalizedPhoto,
+  };
+}
+
+async function loadSheet() {
+  try {
+    const candidates = [
+      SHEET_CSV_URL,
+      // common published-csv variants
+      SHEET_CSV_URL.includes("output=csv") ? SHEET_CSV_URL.replace("output=csv", "output=csv&single=true") : SHEET_CSV_URL,
+      // proxy fallbacks (fix CORS "Failed to fetch")
+      `${CORS_PROXY_PREFIX_HTTPS}${SHEET_CSV_URL.replace(/^https:\/\//, "")}`,
+      `${CORS_PROXY_PREFIX}${SHEET_CSV_URL.replace(/^https?:\/\//, "")}`,
+    ];
+
+    let lastErr = null;
+    let csv = "";
+
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        csv = await res.text();
+        if (csv && csv.includes(",")) break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    if (!csv) throw lastErr || new Error("Failed to fetch");
+
+    const cleanCsv = sanitizeCsvText(csv);
+    const parsed = Papa.parse(cleanCsv, { header: true, skipEmptyLines: "greedy" });
+    const rawRows = Array.isArray(parsed.data) ? parsed.data : [];
+    sheetRows = rawRows
+      .map(normalizeRowKeys)
+      .filter(hasUsefulSheetData);
+  } catch (e) {
+    const msg = String(e?.message ?? e);
+    const hint =
+      msg === "Failed to fetch"
+        ? "（通常是 CORS 擋住：建議用 GitHub Pages 開啟，或用本頁已內建的代理備援；也請確認 Google Sheets 已「發佈到網路」且任何人可存取）"
+        : "";
+    sheetRows = [{ __error: `${msg}${hint}` }];
+  }
+  render();
+}
+
+function getAllItems() {
+  const dynamic = sheetRows
+    .filter((r) => r && typeof r === "object")
+    .filter((r) => !("__error" in r))
+    .map(sheetRowToItem)
+    .reverse();
+  return [...dynamic, ...items];
+}
+
+function updateTabs(allItems) {
+  const categories = Array.from(
+    new Set(
+      allItems
+        .map((it) => String(it.cat ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (activeCat !== "全部" && !categories.includes(activeCat)) {
+    activeCat = "全部";
+  }
+
+  const html = [
+    `<button class="tab ${activeCat === "全部" ? "active" : ""}" data-cat="全部">全部</button>`,
+    ...categories.map((cat) => {
+      const active = activeCat === cat ? "active" : "";
+      return `<button class="tab ${active}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    }),
+  ].join("");
+
+  tabsEl.innerHTML = html;
+}
+
+function updateProgress(list) {
+  const total = list.length;
+  const done = list.reduce((acc, it) => acc + (isChecked(it.id) ? 1 : 0), 0);
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  progBarEl.style.width = `${pct}%`;
+  progTextEl.textContent = `${done} / ${total}`;
+}
+
+function render() {
+  const all = getAllItems();
+  updateTabs(all);
+  const filtered = activeCat === "全部" ? all : all.filter((i) => i.cat === activeCat);
+  updateProgress(filtered);
+
+  if (sheetRows?.[0]?.__error) {
+    contentEl.innerHTML = `
+      <div class="warning-card">
+        <div>⚠️</div>
+        <div>
+          <div style="font-weight:700;margin-bottom:2px;">無法載入 Google Sheets</div>
+          <div style="opacity:.9;line-height:1.4;">${escapeHtml(sheetRows[0].__error)}</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    contentEl.innerHTML = `<div class="empty">目前沒有資料</div>`;
+    return;
+  }
+
+  const byCat = new Map();
+  for (const it of filtered) {
+    if (!byCat.has(it.cat)) byCat.set(it.cat, []);
+    byCat.get(it.cat).push(it);
+  }
+
+  const catClass = (cat) => {
+    if (cat === "阿宅") return "otaku";
+    if (cat === "穿的") return "wear";
+    if (cat === "藥妝") return "beauty";
+    if (cat === "吃的") return "food";
+    if (cat === "日用") return "daiso";
+    return "otaku";
+  };
+
+  const sections = [];
+  for (const [cat, list] of byCat.entries()) {
+    const rows = list
+      .map((it) => {
+        const checkedCls = isChecked(it.id) ? "checked" : "";
+        const fallbackAttr = Array.isArray(it.imgFallbacks) ? it.imgFallbacks.join("|") : "";
+        const imgHtml = it.img
+          ? `<img class="item-img" src="${escapeHtml(it.img)}" alt="${escapeHtml(it.name)}" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" data-fallbacks="${escapeHtml(fallbackAttr)}" onerror="tryNextImage(this)">`
+          : "";
+        const linkUrl = it.link && String(it.link).startsWith("http") ? String(it.link) : "";
+        const linkHtml = linkUrl
+          ? `<a class="item-link" href="${escapeHtml(linkUrl)}" target="_blank" rel="noreferrer">原始連結</a>`
+          : "";
+
+        return `
+          <div class="item ${checkedCls} ${catClass(cat)}" data-id="${escapeHtml(it.id)}">
+            <div class="checkbox" aria-hidden="true">
+              <svg class="checkmark" viewBox="0 0 12 9" fill="none">
+                <path d="M1 4.5L4.5 8L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="item-body">
+              <div class="item-top">
+                <span class="cat-dot"></span>
+                <span class="store-badge">${escapeHtml(it.store || "")}</span>
+                <div class="item-name">${escapeHtml(it.name)}</div>
+              </div>
+              ${it.note ? `<div class="item-note">${escapeHtml(it.note)}</div>` : ""}
+              ${linkHtml}
+              ${imgHtml}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    sections.push(`
+      <div class="section">
+        <div class="section-title">${escapeHtml(cat)}</div>
+        ${rows}
+      </div>
+    `);
+  }
+
+  contentEl.innerHTML = sections.join("");
+
+  contentEl.querySelectorAll(".item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const id = el.getAttribute("data-id");
+      if (!id) return;
+      toggleChecked(id);
+    });
+  });
+}
+
+tabsEl.addEventListener("click", (e) => {
+  const btn = e.target?.closest?.(".tab");
+  if (!btn) return;
+  activeCat = btn.getAttribute("data-cat") || "全部";
+  tabsEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === btn));
+  render();
+});
+
+render();
+loadSheet();
+</script>
+
+</body>
+</html>
