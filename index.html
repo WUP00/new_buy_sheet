@@ -398,7 +398,7 @@ function sanitizeCsvText(raw) {
   if (!txt) return "";
 
   const lines = txt.split(/\r?\n/);
-  const headerCandidates = ["時間戳記", "品項名稱", "數量", "照片", "限定價格"];
+  const headerCandidates = ["時間戳記", "品項名稱", "數量", "照片", "備註"];
 
   // If proxy adds metadata lines, locate the real CSV header row first.
   const headerIndex = lines.findIndex((line) =>
@@ -424,7 +424,7 @@ function hasUsefulSheetData(row) {
     row["品項名稱"],
     row["數量"],
     row["照片"],
-    row["限定價格"],
+    row["備註"],
     row["timestamp"],
     row["item"],
     row["qty"],
@@ -439,10 +439,10 @@ function sheetRowToItem(row, idx) {
   const name = row["品項名稱"] ?? row["item"] ?? row["Item"] ?? "";
   const qty = row["數量"] ?? row["qty"] ?? row["Qty"] ?? "";
   const photo = row["照片"] ?? row["photo"] ?? row["Photo"] ?? "";
-  const price = row["限定價格"] ?? row["price"] ?? row["Price"] ?? "";
+  const price = row["備註"] ?? row["price"] ?? row["Price"] ?? "";
 
   const title = [name, qty ? `×${qty}` : ""].filter(Boolean).join(" ");
-  const note = [price !== "" ? `限定價格：${price}` : ""]
+  const note = [price !== "" ? `備註：${price}` : ""]
     .filter(Boolean)
     .join(" · ");
 
