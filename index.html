@@ -84,6 +84,13 @@
     width: 0%;
   }
 
+  /* TABS CONTAINER */
+  .tabs-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   /* TABS */
   .tabs {
     display: flex;
@@ -93,6 +100,19 @@
     scrollbar-width: none;
   }
   .tabs::-webkit-scrollbar { display: none; }
+  
+  #main-tabs .tab {
+    font-weight: 700;
+  }
+
+  #sub-tabs-container {
+    border-top: 1px dashed var(--border);
+    padding-top: 6px;
+  }
+  #sub-tabs-container.hidden {
+    display: none;
+  }
+
   .tab {
     flex-shrink: 0;
     padding: 5px 12px;
@@ -208,7 +228,6 @@
   }
   .item.checked .item-note { color: var(--checked-text); }
 
-  /* 備註裡的自動超連結 */
   .item-note a {
     color: #2B6CB0;
     text-decoration: underline;
@@ -227,7 +246,6 @@
   }
   .item-link:active { opacity: 0.7; }
 
-  /* ADDED: Item Image */
   .item-img {
     display: block;
     margin-top: 8px;
@@ -239,7 +257,6 @@
   }
   .item.checked .item-img { opacity: 0.5; filter: grayscale(1); }
 
-  /* WARNING NOTE */
   .warning-card {
     background: #FFF8E6;
     border: 1px solid #F0D080;
@@ -253,7 +270,6 @@
     gap: 8px;
   }
 
-  /* EMPTY */
   .empty {
     text-align: center;
     padding: 40px 0;
@@ -284,8 +300,16 @@
       <span class="progress-text" id="prog-text">0 / 0</span>
     </div>
   </div>
-  <div class="tabs" id="tabs">
-    <button class="tab active" data-cat="全部">全部</button>
+  
+  <div class="tabs-container">
+    <div class="tabs" id="main-tabs">
+      <button class="tab active" data-main="全部">全部</button>
+      <button class="tab" data-main="日本">日本</button>
+      <button class="tab" data-main="韓國">韓國</button>
+    </div>
+    <div id="sub-tabs-container" class="hidden">
+      <div class="tabs" id="sub-tabs"></div>
+    </div>
   </div>
 </div>
 
@@ -294,23 +318,22 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 const items = [];
-
-// Primary URL (public "Publish to the web" CSV)
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs78aEB1z_QP6UXRbbsFSeTK66wU_o2OuKkaub-W3qYsxMJURylcxjxG5Mq-929UdqpWajyt3YUFhe/pub?output=csv";
 
-// CORS workaround: some Google CSV endpoints do not send CORS headers.
-// This read-only proxy turns the response into plain text with permissive CORS.
-// If you don’t want any 3rd-party proxy, host a tiny proxy yourself (Cloudflare Worker, etc.).
 const CORS_PROXY_PREFIX = "https://r.jina.ai/http://";
 const CORS_PROXY_PREFIX_HTTPS = "https://r.jina.ai/https://";
 
 const contentEl = document.getElementById("content");
-const tabsEl = document.getElementById("tabs");
+const mainTabsEl = document.getElementById("main-tabs");
+const subTabsEl = document.getElementById("sub-tabs");
+const subTabsContainer = document.getElementById("sub-tabs-container");
 const progBarEl = document.getElementById("prog-bar");
 const progTextEl = document.getElementById("prog-text");
 
 const STORAGE_KEY = "sapporo_buylist_checked_v1";
-let activeCat = "全部";
+
+let activeMainCat = "全部";
+let activeSubCat = "全部"; 
 let checked = loadChecked();
 let sheetRows = [];
 
@@ -351,42 +374,29 @@ function escapeHtml(s) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll("'", "&#39;");
 }
 
-// 把純文字中的 http(s):// 連結自動轉成 <a>，其餘文字維持純文字。
-// 一律先以 escapeHtml 跳脫，避免任何 HTML 注入。
 function linkifyText(text) {
   const raw = String(text ?? "");
   if (!raw) return "";
-
-  // 抓 http:// 或 https:// 的 URL，遇到結尾常見標點則停止
   const urlRe = /https?:\/\/[^\s<>"'）)】」』，,。；;]+/g;
-
   let result = "";
   let lastIndex = 0;
   let match;
   while ((match = urlRe.exec(raw)) !== null) {
     const url = match[0];
     const start = match.index;
-
-    // 之前的純文字部分
     if (start > lastIndex) {
       result += escapeHtml(raw.slice(lastIndex, start));
     }
-
-    // URL 本身：href / 顯示文字都跳脫，避免 XSS
     const safeHref = escapeHtml(url);
     result += `<a href="${safeHref}" target="_blank" rel="noreferrer noopener">${safeHref}</a>`;
-
     lastIndex = start + url.length;
   }
-
-  // 結尾剩餘的純文字
   if (lastIndex < raw.length) {
     result += escapeHtml(raw.slice(lastIndex));
   }
-
   return result;
 }
 
@@ -394,13 +404,10 @@ function parseDriveImageUrl(url) {
   const u = String(url ?? "").trim();
   if (!u) return "";
   if (!u.startsWith("http://") && !u.startsWith("https://")) return u;
-
   const openId = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (openId?.[1]) return `https://drive.google.com/uc?export=view&id=${openId[1]}`;
-
   const fileD = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)\//);
   if (fileD?.[1]) return `https://drive.google.com/uc?export=view&id=${fileD[1]}`;
-
   return u;
 }
 
@@ -442,15 +449,11 @@ function tryNextImage(imgEl) {
 function sanitizeCsvText(raw) {
   const txt = String(raw ?? "").replace(/^\uFEFF/, "").trim();
   if (!txt) return "";
-
   const lines = txt.split(/\r?\n/);
   const headerCandidates = ["時間戳記", "品項名稱", "數量", "照片", "備註"];
-
-  // If proxy adds metadata lines, locate the real CSV header row first.
   const headerIndex = lines.findIndex((line) =>
     headerCandidates.every((h) => line.includes(h))
   );
-
   if (headerIndex >= 0) return lines.slice(headerIndex).join("\n").trim();
   return txt;
 }
@@ -466,16 +469,9 @@ function normalizeRowKeys(row) {
 
 function hasUsefulSheetData(row) {
   const vals = [
-    row["時間戳記"],
-    row["品項名稱"],
-    row["數量"],
-    row["照片"],
-    row["備註"],
-    row["timestamp"],
-    row["item"],
-    row["qty"],
-    row["photo"],
-    row["price"],
+    row["時間戳記"], row["品項名稱"], row["數量"], row["照片"], row["備註"],
+    row["timestamp"], row["item"], row["qty"], row["photo"], row["price"],
+    row["類別"], row["category"]
   ];
   return vals.some((v) => String(v ?? "").trim() !== "");
 }
@@ -488,17 +484,19 @@ function sheetRowToItem(row, idx) {
   const price = row["備註"] ?? row["price"] ?? row["Price"] ?? "";
 
   const title = [name, qty ? `×${qty}` : ""].filter(Boolean).join(" ");
-  const note = [price !== "" ? `備註：${price}` : ""]
-    .filter(Boolean)
-    .join(" · ");
+  const note = [price !== "" ? `備註：${price}` : ""].filter(Boolean).join(" · ");
 
   const normalizedPhoto = String(photo ?? "").trim();
   const primaryImg = parseDriveImageUrl(normalizedPhoto);
   const imgFallbacks = buildDriveFallbackUrls(normalizedPhoto).filter((u) => u !== primaryImg);
 
+  // 防錯強化：只要字串包含 '韓國' 或 '🇰🇷'，一律判定為韓國大類，其餘全丟到日本
+  const mainCat = (category.includes("韓國") || category.includes("🇰🇷")) ? "韓國" : "日本";
+
   return {
     id: `sheet_${idx}`,
-    cat: category,
+    cat: category,       
+    mainCat: mainCat,    
     store: category,
     name: title || "(未填品項名稱)",
     note,
@@ -512,9 +510,7 @@ async function loadSheet() {
   try {
     const candidates = [
       SHEET_CSV_URL,
-      // common published-csv variants
       SHEET_CSV_URL.includes("output=csv") ? SHEET_CSV_URL.replace("output=csv", "output=csv&single=true") : SHEET_CSV_URL,
-      // proxy fallbacks (fix CORS "Failed to fetch")
       `${CORS_PROXY_PREFIX_HTTPS}${SHEET_CSV_URL.replace(/^https:\/\//, "")}`,
       `${CORS_PROXY_PREFIX}${SHEET_CSV_URL.replace(/^https?:\/\//, "")}`,
     ];
@@ -543,10 +539,7 @@ async function loadSheet() {
       .filter(hasUsefulSheetData);
   } catch (e) {
     const msg = String(e?.message ?? e);
-    const hint =
-      msg === "Failed to fetch"
-        ? "（通常是 CORS 擋住：建議用 GitHub Pages 開啟，或用本頁已內建的代理備援；也請確認 Google Sheets 已「發佈到網路」且任何人可存取）"
-        : "";
+    const hint = msg === "Failed to fetch" ? "（通常是 CORS 擋住）" : "";
     sheetRows = [{ __error: `${msg}${hint}` }];
   }
   render();
@@ -562,27 +555,43 @@ function getAllItems() {
 }
 
 function updateTabs(allItems) {
-  const categories = Array.from(
+  // 更新第一層大標高亮
+  mainTabsEl.querySelectorAll(".tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-main") === activeMainCat);
+  });
+
+  // 如果選全部，隱藏小標標籤列
+  if (activeMainCat === "全部") {
+    subTabsContainer.classList.add("hidden");
+    activeSubCat = "全部";
+    return;
+  }
+
+  // 顯現小標
+  subTabsContainer.classList.remove("hidden");
+
+  const availableSubCats = Array.from(
     new Set(
       allItems
-        .map((it) => String(it.cat ?? "").trim())
+        .filter((item) => item.mainCat === activeMainCat)
+        .map((item) => item.cat)
         .filter(Boolean)
     )
   );
 
-  if (activeCat !== "全部" && !categories.includes(activeCat)) {
-    activeCat = "全部";
+  if (activeSubCat !== "全部" && !availableSubCats.includes(activeSubCat)) {
+    activeSubCat = "全部";
   }
 
-  const html = [
-    `<button class="tab ${activeCat === "全部" ? "active" : ""}" data-cat="全部">全部</button>`,
-    ...categories.map((cat) => {
-      const active = activeCat === cat ? "active" : "";
-      return `<button class="tab ${active}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
-    }),
+  const subHtml = [
+    `<button class="tab ${activeSubCat === "全部" ? "active" : ""}" data-sub="全部">全部小標</button>`,
+    ...availableSubCats.map((cat) => {
+      const active = activeSubCat === cat ? "active" : "";
+      return `<button class="tab ${active}" data-sub="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    })
   ].join("");
 
-  tabsEl.innerHTML = html;
+  subTabsEl.innerHTML = subHtml;
 }
 
 function updateProgress(list) {
@@ -596,7 +605,16 @@ function updateProgress(list) {
 function render() {
   const all = getAllItems();
   updateTabs(all);
-  const filtered = activeCat === "全部" ? all : all.filter((i) => i.cat === activeCat);
+  
+  let filtered = all;
+  
+  if (activeMainCat !== "全部") {
+    filtered = filtered.filter((i) => i.mainCat === activeMainCat);
+  }
+  if (activeSubCat !== "全部") {
+    filtered = filtered.filter((i) => i.cat === activeSubCat);
+  }
+
   updateProgress(filtered);
 
   if (sheetRows?.[0]?.__error) {
@@ -612,8 +630,13 @@ function render() {
     return;
   }
 
+  // 避免還沒抓到 Google Sheet 資料時就直接顯示「目前沒有資料」
   if (filtered.length === 0) {
-    contentEl.innerHTML = `<div class="empty">目前沒有資料</div>`;
+    if (sheetRows.length === 0) {
+      contentEl.innerHTML = `<div class="empty">連線中，正在載入雲端清單...</div>`;
+    } else {
+      contentEl.innerHTML = `<div class="empty">目前沒有資料</div>`;
+    }
     return;
   }
 
@@ -646,7 +669,6 @@ function render() {
           ? `<a class="item-link" href="${escapeHtml(linkUrl)}" target="_blank" rel="noreferrer">原始連結</a>`
           : "";
 
-        // 備註：自動偵測 URL 並轉成超連結（純文字依然安全跳脫）
         const noteHtml = it.note
           ? `<div class="item-note" data-no-toggle="1">${linkifyText(it.note)}</div>`
           : "";
@@ -685,7 +707,6 @@ function render() {
 
   contentEl.querySelectorAll(".item").forEach((el) => {
     el.addEventListener("click", (e) => {
-      // 點到備註內的超連結時不要切換勾選狀態
       if (e.target.closest && e.target.closest("a")) return;
       const id = el.getAttribute("data-id");
       if (!id) return;
@@ -694,11 +715,18 @@ function render() {
   });
 }
 
-tabsEl.addEventListener("click", (e) => {
+mainTabsEl.addEventListener("click", (e) => {
   const btn = e.target?.closest?.(".tab");
   if (!btn) return;
-  activeCat = btn.getAttribute("data-cat") || "全部";
-  tabsEl.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === btn));
+  activeMainCat = btn.getAttribute("data-main") || "全部";
+  activeSubCat = "全部"; 
+  render();
+});
+
+subTabsEl.addEventListener("click", (e) => {
+  const btn = e.target?.closest?.(".tab");
+  if (!btn) return;
+  activeSubCat = btn.getAttribute("data-sub") || "全部";
   render();
 });
 
